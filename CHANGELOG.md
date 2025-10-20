@@ -66,7 +66,6 @@
 
 #### Developer Experience
 - Hot reload with Air
-- Docker Compose support
 - MinIO installation scripts
 - Comprehensive documentation
 - .env.example template

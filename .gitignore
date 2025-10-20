@@ -23,8 +23,6 @@ dist/
 
 # IDE files
 .vscode/
-.idea/
-*.iml
 
 # OS files
 .DS_Store
@@ -32,12 +30,9 @@ Thumbs.db
 
 # Logs
 *.log
-minio.log
 
 # Environment files
 .env
-.env.local
-.env.*.local
 
 # Database files
 *.db
@@ -51,12 +46,7 @@ Secure-Document-Exchange-Portal
 # Temporary files
 *.tmp
 *.swp
-tmp/
 
-# Storage directories
-storage/
-minio-data/
-
-# Air (hot reload tool)
-.air.toml
-tmp/
+#pass
+data.txt
+*.txt
