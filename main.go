@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,9 +13,11 @@ import (
 	"Secure-Document-Exchange-Portal/internal/database"
 	"Secure-Document-Exchange-Portal/internal/handlers"
 	"Secure-Document-Exchange-Portal/internal/services"
+	"Secure-Document-Exchange-Portal/templates"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
@@ -26,28 +29,130 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 	// Query DB (cache disabled for now due to pgtype marshaling issues)
 	share, err := db.GetShareByToken(c.Context(), token)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Share not found"})
+		c.Set("Content-Type", "text/html")
+		return c.Status(fiber.StatusNotFound).SendString(`
+			<html><body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+			<div style="background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px;">
+				<h2 style="color: #c00; margin: 0 0 10px 0;">❌ Share Not Found</h2>
+				<p>This share link does not exist or has been deleted.</p>
+			</div>
+			</body></html>
+		`)
 	}
 
 	// Check expiration
 	if share.ExpiresAt.Time.Before(time.Now()) {
-		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "Share expired"})
+		c.Set("Content-Type", "text/html")
+		return c.Status(fiber.StatusGone).SendString(`
+			<html><body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+			<div style="background: #ffe; border: 1px solid #ffa; padding: 20px; border-radius: 8px;">
+				<h2 style="color: #a80; margin: 0 0 10px 0;">⏱️ Share Expired</h2>
+				<p>This share link has expired and is no longer available.</p>
+			</div>
+			</body></html>
+		`)
 	}
 
 	// Check access count
 	if share.MaxAccess.Int32 != -1 && share.AccessCount.Int32 >= share.MaxAccess.Int32 {
-		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "Access limit exceeded"})
+		c.Set("Content-Type", "text/html")
+		return c.Status(fiber.StatusGone).SendString(`
+			<html><body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+			<div style="background: #ffe; border: 1px solid #ffa; padding: 20px; border-radius: 8px;">
+				<h2 style="color: #a80; margin: 0 0 10px 0;">🔒 Access Limit Reached</h2>
+				<p>This share link has reached its maximum number of accesses.</p>
+			</div>
+			</body></html>
+		`)
 	}
 
 	// Check password if set
 	if share.PasswordHash.Valid {
-		password := c.Query("password")
+		password := c.FormValue("password")
 		if password == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Password required"})
+			password = c.Query("password")
 		}
-		// TODO: check password hash
-		if password != share.PasswordHash.String { // placeholder
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid password"})
+		
+		if password == "" {
+			// Show password form
+			errorMsg := ""
+			if c.Method() == "POST" {
+				errorMsg = `<p style="color: #c00; margin-bottom: 15px;">❌ Password is required</p>`
+			}
+			
+			c.Set("Content-Type", "text/html")
+			return c.SendString(fmt.Sprintf(`
+				<html>
+				<head>
+					<title>Password Protected Share</title>
+					<style>
+						body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+						.container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+						h2 { color: #333; margin: 0 0 10px 0; }
+						.subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+						.file-info { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+						.file-info strong { color: #555; }
+						input[type="password"] { width: 100%%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+						button { width: 100%%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 15px; }
+						button:hover { background: #45a049; }
+					</style>
+				</head>
+				<body>
+					<div class="container">
+						<h2>🔒 Password Protected</h2>
+						<p class="subtitle">This file is password protected</p>
+						<div class="file-info">
+							<strong>File:</strong> %s<br>
+							<strong>Size:</strong> %.2f MB
+						</div>
+						%s
+						<form method="POST">
+							<input type="password" name="password" placeholder="Enter password" required autofocus>
+							<button type="submit">Access File</button>
+						</form>
+					</div>
+				</body>
+				</html>
+			`, share.Filename, float64(share.FileSize)/1024/1024, errorMsg))
+		}
+		
+		// Check password hash
+		if password != share.PasswordHash.String {
+			errorMsg := `<p style="color: #c00; margin-bottom: 15px;">❌ Invalid password. Please try again.</p>`
+			c.Set("Content-Type", "text/html")
+			return c.SendString(fmt.Sprintf(`
+				<html>
+				<head>
+					<title>Password Protected Share</title>
+					<style>
+						body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+						.container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+						h2 { color: #333; margin: 0 0 10px 0; }
+						.subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+						.file-info { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+						.file-info strong { color: #555; }
+						input[type="password"] { width: 100%%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+						button { width: 100%%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 15px; }
+						button:hover { background: #45a049; }
+					</style>
+				</head>
+				<body>
+					<div class="container">
+						<h2>🔒 Password Protected</h2>
+						<p class="subtitle">This file is password protected</p>
+						<div class="file-info">
+							<strong>File:</strong> %s<br>
+							<strong>Size:</strong> %.2f MB
+						</div>
+						%s
+						<form method="POST">
+							<input type="password" name="password" placeholder="Enter password" required autofocus>
+							<button type="submit">Access File</button>
+						</form>
+					</div>
+				</body>
+				</html>
+			`, share.Filename, float64(share.FileSize)/1024/1024, errorMsg))
 		}
 	}
 
@@ -98,9 +203,34 @@ func main() {
 	jwtService := auth.NewJWTService(jwtSecret)
 
 	// Initialize storage
-	storage, err := services.NewMinIOService("localhost:9000", "minioadmin", "minioadmin", false)
-	if err != nil {
-		log.Fatal("Failed to connect to storage:", err)
+	var storage services.StorageService
+	minioStorage, err := services.NewMinIOService("localhost:9000", "minioadmin", "minioadmin", false)
+	minioAvailable := false
+	
+	if err == nil {
+		// Test the connection by trying to list buckets
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_, err = minioStorage.ListBuckets(ctx)
+		if err == nil {
+			// Ensure the documents bucket exists
+			err = minioStorage.EnsureBucket(context.Background(), "documents")
+			if err == nil {
+				minioAvailable = true
+				storage = minioStorage
+				log.Println("✓ Using MinIO storage")
+			}
+		}
+	}
+	
+	if !minioAvailable {
+		log.Println("MinIO not available, falling back to local storage")
+		localStorage, err := services.NewLocalStorageService("./storage")
+		if err != nil {
+			log.Fatal("Failed to initialize storage:", err)
+		}
+		storage = localStorage
+		log.Println("✓ Using local file storage at ./storage")
 	}
 
 	// Initialize cache
@@ -121,14 +251,63 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
+	// Static files
+	app.Use("/static", filesystem.New(filesystem.Config{
+		Root: http.Dir("./static"),
+	}))
+
+	// Auth handler instance (declared later, but needed here)
+	var authHandler *handlers.AuthHandler
+
+	// Web routes (HTML responses)
+	app.Get("/", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.DocumentListPage([]templates.Document{})).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/login", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.LoginPage([]string{}, "")).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/register", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.RegisterPage([]string{})).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/documents", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.DocumentListPage([]templates.Document{})).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/documents/upload", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "text/html")
+		return templates.UploadForm().Render(c.Context(), c.Response().BodyWriter())
+	})
+
 	api := app.Group("/api")
 
 	// Auth routes (public)
 	authGroup := api.Group("/auth")
-	authHandler := handlers.NewAuthHandler(queries, jwtService)
+	authHandler = handlers.NewAuthHandler(queries, jwtService)
 	authGroup.Post("/register", authHandler.Register)
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
+	authGroup.Post("/logout", authHandler.Logout)
+
+	app.Get("/logout", func(c *fiber.Ctx) error {
+		return authHandler.Logout(c)
+	})
+
+
 
 	// Protected routes
 	protected := api.Group("", auth.AuthMiddleware(jwtService))
@@ -136,15 +315,43 @@ func main() {
 	documents := protected.Group("/documents")
 	documents.Post("", docHandler.Upload)
 	documents.Get("", docHandler.List)
-	documents.Get("/:id", docHandler.Download)
-	documents.Delete("/:id", docHandler.Delete)
+	documents.Get("/:id/view", docHandler.View)
+	documents.Get("/:id/download", docHandler.Download)
 	documents.Post("/:id/share", docHandler.CreateShare)
+	documents.Delete("/:id", docHandler.Delete)
+	documents.Get("/:id", docHandler.Download)
+
+	// Web document routes
+	app.Get("/documents", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.DocumentListPage([]templates.Document{})).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/documents/upload", func(c *fiber.Ctx) error {
+		isAuth := auth.IsAuthenticated(c, jwtService)
+		userName := auth.GetUserName(c, jwtService, queries)
+		c.Set("Content-Type", "text/html")
+		return templates.Base(isAuth, userName, templates.UploadForm()).Render(c.Context(), c.Response().BodyWriter())
+	})
+
+	app.Get("/documents/:id/share", docHandler.GetShareForm)
+
+	// Close modal endpoint
+	app.Get("/api/close-modal", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "text/html")
+		return c.SendString(`<div id="share-modal"></div>`)
+	})
 
 	_ = authGroup
 	_ = protected
 
-	// Public share access
+	// Public share access (GET and POST for password submission)
 	app.Get("/api/share/:token", func(c *fiber.Ctx) error {
+		return AccessShare(c, queries, storage, cache)
+	})
+	app.Post("/api/share/:token", func(c *fiber.Ctx) error {
 		return AccessShare(c, queries, storage, cache)
 	})
 
@@ -154,6 +361,7 @@ func main() {
 			"status": "ok",
 		})
 	})
+
 
 	log.Fatal(app.Listen(":8080"))
 }

@@ -28,13 +28,30 @@ func NewAuthHandler(db *database.Queries, jwtService *auth.JWTService) *AuthHand
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req models.RegisterRequest
+
+	// Try parsing as JSON first (API calls), fallback to form data (HTMX)
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+		// Fallback to form data for HTMX requests
+		req = models.RegisterRequest{
+			Email:    c.FormValue("email"),
+			Password: c.FormValue("password"),
+			FullName: c.FormValue("full_name"),
+		}
+	}
+
+	if req.Email == "" || req.Password == "" || req.FullName == "" {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>All fields are required</p></div>`)
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "All fields are required"})
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusInternalServerError).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Failed to hash password</p></div>`)
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to hash password"})
 	}
 
@@ -45,7 +62,17 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		FullName:     req.FullName,
 	})
 	if err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusConflict).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>User already exists</p></div>`)
+		}
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "User already exists"})
+	}
+
+	if c.Get("HX-Request") == "true" {
+		// For HTMX, show success message
+		return c.Status(fiber.StatusOK).SendString(`<div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+			<p>Registration successful! Please <a href="/login" class="font-bold underline">login here</a> to continue.</p>
+		</div>`)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(models.UserResponse{
@@ -58,18 +85,37 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req models.LoginRequest
+
+	// Try parsing as JSON first (API calls), fallback to form data (HTMX)
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+		// Fallback to form data for HTMX requests
+		req = models.LoginRequest{
+			Email:    c.FormValue("email"),
+			Password: c.FormValue("password"),
+		}
+	}
+
+	if req.Email == "" || req.Password == "" {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Email and password are required</p></div>`)
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email and password are required"})
 	}
 
 	// Get user by email
 	user, err := h.db.GetUserByEmail(c.Context(), req.Email)
 	if err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusUnauthorized).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Invalid credentials</p></div>`)
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
 	// Check password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusUnauthorized).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Invalid credentials</p></div>`)
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
@@ -77,7 +123,25 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	userUUID := uuid.MustParse(user.ID.String())
 	token, err := h.jwtService.GenerateToken(userUUID, 24*time.Hour)
 	if err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusInternalServerError).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Failed to generate token</p></div>`)
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate token"})
+	}
+
+	if c.Get("HX-Request") == "true" {
+		// Set auth cookie for web requests
+		c.Cookie(&fiber.Cookie{
+			Name:     "auth_token",
+			Value:    token,
+			HTTPOnly: true,
+			Secure:   false, // Set to true in production with HTTPS
+			SameSite: "Lax",
+			MaxAge:   86400, // 24 hours
+		})
+		// For HTMX, redirect to documents page on success
+		c.Set("HX-Redirect", "/documents")
+		return c.SendString("")
 	}
 
 	return c.JSON(models.LoginResponse{
@@ -126,4 +190,12 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		"token":      newToken,
 		"expires_at": time.Now().Add(24 * time.Hour).Format(time.RFC3339),
 	})
+}
+
+func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	// Clear the auth cookie
+	c.ClearCookie("auth_token")
+
+	// Always redirect to home page for web requests
+	return c.Redirect("/")
 }
