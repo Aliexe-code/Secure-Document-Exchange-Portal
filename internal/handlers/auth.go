@@ -7,22 +7,24 @@ import (
 	"Secure-Document-Exchange-Portal/internal/auth"
 	"Secure-Document-Exchange-Portal/internal/database"
 	"Secure-Document-Exchange-Portal/internal/models"
+	"Secure-Document-Exchange-Portal/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
 	db         *database.Queries
 	jwtService *auth.JWTService
+	cache      *services.CachedRepository
 }
 
-func NewAuthHandler(db *database.Queries, jwtService *auth.JWTService) *AuthHandler {
+func NewAuthHandler(db *database.Queries, jwtService *auth.JWTService, cache *services.CachedRepository) *AuthHandler {
 	return &AuthHandler{
 		db:         db,
 		jwtService: jwtService,
+		cache:      cache,
 	}
 }
 
@@ -102,8 +104,8 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email and password are required"})
 	}
 
-	// Get user by email
-	user, err := h.db.GetUserByEmail(c.Context(), req.Email)
+	// Get user by email - with caching
+	user, err := h.cache.GetUserByEmail(c.Context(), req.Email)
 	if err != nil {
 		if c.Get("HX-Request") == "true" {
 			return c.Status(fiber.StatusUnauthorized).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>Invalid credentials</p></div>`)
@@ -120,7 +122,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Generate token
-	userUUID := uuid.MustParse(user.ID.String())
+	userUUID := uuid.MustParse(user.ID)
 	token, err := h.jwtService.GenerateToken(userUUID, 24*time.Hour)
 	if err != nil {
 		if c.Get("HX-Request") == "true" {
@@ -147,10 +149,10 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.JSON(models.LoginResponse{
 		Token: token,
 		User: models.UserResponse{
-			ID:        user.ID.String(),
+			ID:        user.ID,
 			Email:     user.Email,
 			FullName:  user.FullName,
-			CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+			CreatedAt: user.CreatedAt.Format(time.RFC3339),
 		},
 		ExpiresAt: time.Now().Add(24 * time.Hour).Format(time.RFC3339),
 	})
@@ -173,9 +175,8 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid or expired token"})
 	}
 
-	// Check if user still exists
-	userID := pgtype.UUID{Bytes: claims.UserID, Valid: true}
-	_, err = h.db.GetUserByID(c.Context(), userID)
+	// Check if user still exists - with caching
+	_, err = h.cache.GetUserByID(c.Context(), claims.UserID)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User not found"})
 	}

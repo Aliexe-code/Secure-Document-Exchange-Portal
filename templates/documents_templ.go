@@ -39,7 +39,7 @@ func DocumentListPage(documents []Document) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md\"><div class=\"flex justify-between items-center mb-6\"><h2 class=\"text-2xl font-bold text-gray-900 dark:text-gray-100\">My Documents</h2><button hx-get=\"/documents/upload\" hx-target=\"#upload-form\" hx-swap=\"innerHTML\" class=\"bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600\">Upload Document</button></div><div id=\"upload-form\" class=\"mb-6\"></div><div id=\"documents-list\" hx-get=\"/api/documents\" hx-trigger=\"load, documentUploaded\" hx-swap=\"innerHTML\" hx-indicator=\"#documents-list\"></div><div id=\"preview-modal\"></div><div id=\"share-modal\"></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-6xl mx-auto\"><!-- Header Section --><div class=\"bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200 dark:border-gray-700 mb-6\"><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4\"><div><h2 class=\"text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center\"><svg class=\"w-8 h-8 mr-3 text-primary-500\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z\"></path></svg> My Documents</h2><p class=\"mt-1 text-sm text-gray-600 dark:text-gray-400\">Securely store and share your files</p></div><button hx-get=\"/documents/upload\" hx-target=\"#upload-form\" hx-swap=\"innerHTML\" class=\"inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all\"><svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"></path></svg> Upload Document</button></div></div><!-- Upload Form Container --><div id=\"upload-form\" class=\"mb-6\"></div><!-- Documents List --><div id=\"documents-list\" hx-get=\"/api/documents\" hx-trigger=\"load, documentUploaded\" hx-swap=\"innerHTML\" hx-indicator=\"#documents-list\" class=\"min-h-[200px]\"></div><!-- Modals --><div id=\"preview-modal\"></div><div id=\"share-modal\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -69,113 +69,133 @@ func DocumentList(documents []Document) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(documents) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-gray-500 dark:text-gray-400 text-center py-8\">No documents uploaded yet.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<!-- Empty State --> <div class=\"bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-12 text-center\"><div class=\"mx-auto h-24 w-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-400 dark:text-gray-500\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2\">No documents yet</h3><p class=\"text-gray-600 dark:text-gray-400 mb-6\">Get started by uploading your first document</p><button hx-get=\"/documents/upload\" hx-target=\"#upload-form\" hx-swap=\"innerHTML\" class=\"inline-flex items-center px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all\"><svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 4v16m8-8H4\"></path></svg> Upload First Document</button></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"space-y-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<!-- Documents Grid --> <div class=\"grid grid-cols-1 gap-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, doc := range documents {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"border border-gray-200 dark:border-gray-700 rounded p-4 flex justify-between items-center bg-white dark:bg-gray-800\"><div><h3 class=\"font-semibold text-gray-900 dark:text-gray-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl transition-all group\"><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4\"><!-- Document Info --><div class=\"flex items-start space-x-4 flex-1 min-w-0\"><!-- File Icon --><div class=\"flex-shrink-0 w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-lg flex items-center justify-center\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if doc.MimeType == "application/pdf" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<svg class=\"w-6 h-6 text-primary-600 dark:text-primary-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z\" clip-rule=\"evenodd\"></path></svg>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else if doc.MimeType == "image/jpeg" || doc.MimeType == "image/png" || doc.MimeType == "image/gif" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<svg class=\"w-6 h-6 text-primary-600 dark:text-primary-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z\" clip-rule=\"evenodd\"></path></svg>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<svg class=\"w-6 h-6 text-primary-600 dark:text-primary-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z\" clip-rule=\"evenodd\"></path></svg>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><!-- File Details --><div class=\"flex-1 min-w-0\"><h3 class=\"font-semibold text-gray-900 dark:text-gray-100 truncate text-lg group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(doc.Filename)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 45, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 110, Col: 22}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</h3><p class=\"text-sm text-gray-600 dark:text-gray-400\">Size: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</h3><div class=\"mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-gray-400\"><span class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1 text-gray-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path d=\"M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z\"></path> <path d=\"M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z\"></path> <path d=\"M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z\"></path></svg> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f", float64(doc.FileSize)/1024/1024))
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f MB", float64(doc.FileSize)/1024/1024))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 47, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 119, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " MB | Type: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span> <span class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1 text-gray-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z\" clip-rule=\"evenodd\"></path></svg> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(doc.MimeType)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 48, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 125, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " | Created: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <span class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1 text-gray-400\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z\" clip-rule=\"evenodd\"></path></svg> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(doc.CreatedAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 49, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 131, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p></div><div class=\"flex space-x-2\"><a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></div></div></div><!-- Action Buttons --><div class=\"flex items-center space-x-2 flex-shrink-0\"><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 templ.SafeURL
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(fmt.Sprintf("/api/documents/%s/download", doc.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 54, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 140, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"bg-green-600 dark:bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-700 dark:hover:bg-green-600 inline-block\">Download</a> <button hx-get=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all\" title=\"Download\"><svg class=\"w-4 h-4 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4\"></path></svg> <span class=\"hidden sm:inline\">Download</span></a> <button hx-get=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/documents/%s/share", doc.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 60, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 150, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-target=\"#share-modal\" hx-swap=\"outerHTML\" class=\"bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 dark:hover:bg-blue-600\">Share</button> <button hx-delete=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" hx-target=\"#share-modal\" hx-swap=\"outerHTML\" class=\"inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all\" title=\"Share\"><svg class=\"w-4 h-4 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z\"></path></svg> <span class=\"hidden sm:inline\">Share</span></button> <button hx-delete=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/api/documents/%s", doc.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 68, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 162, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" hx-confirm=\"Are you sure you want to delete this document?\" class=\"bg-red-600 dark:bg-red-700 text-white px-3 py-1 rounded text-sm hover:bg-red-700 dark:hover:bg-red-600\">Delete</button></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-confirm=\"Are you sure you want to delete this document? This action cannot be undone.\" hx-target=\"closest .group\" hx-swap=\"outerHTML swap:500ms\" class=\"inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all\" title=\"Delete\"><svg class=\"w-4 h-4 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg> <span class=\"hidden sm:inline\">Delete</span></button></div></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -205,7 +225,7 @@ func UploadForm() templ.Component {
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<form hx-post=\"/api/documents\" hx-target=\"#upload-form\" hx-swap=\"innerHTML\" hx-encoding=\"multipart/form-data\" class=\"border border-gray-300 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-800\"><h3 class=\"font-semibold mb-4 text-gray-900 dark:text-gray-100\">Upload New Document</h3><div class=\"space-y-4\"><div><label for=\"file\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300\">Select File</label> <input type=\"file\" id=\"file\" name=\"file\" required class=\"mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100\"></div><div class=\"flex space-x-2\"><button type=\"submit\" class=\"bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600\">Upload</button> <button type=\"button\" onclick=\"this.closest('form').parentElement.innerHTML = ''\" class=\"bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-700 dark:hover:bg-gray-600\">Cancel</button></div></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 md:p-8 animate-slide-in\"><div class=\"flex items-center justify-between mb-6\"><div class=\"flex items-center\"><div class=\"w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mr-3\"><svg class=\"w-6 h-6 text-primary-600 dark:text-primary-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"></path></svg></div><div><h3 class=\"text-xl font-semibold text-gray-900 dark:text-gray-100\">Upload New Document</h3><p class=\"text-sm text-gray-600 dark:text-gray-400\">Select a file to upload securely</p></div></div><button onclick=\"this.closest('div[id=upload-form]').innerHTML = ''\" class=\"text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors\" title=\"Close\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><form hx-post=\"/api/documents\" hx-target=\"#upload-form\" hx-swap=\"innerHTML\" hx-encoding=\"multipart/form-data\" hx-indicator=\"#upload-spinner\" class=\"space-y-6\"><!-- File Input --><div><label for=\"file\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3\">Select File</label><div class=\"relative\"><input type=\"file\" id=\"file\" name=\"file\" required class=\"block w-full text-sm text-gray-900 dark:text-gray-100\n\t\t\t\t\t\t\tfile:mr-4 file:py-3 file:px-6\n\t\t\t\t\t\t\tfile:rounded-lg file:border-0\n\t\t\t\t\t\t\tfile:text-sm file:font-semibold\n\t\t\t\t\t\t\tfile:bg-primary-50 file:text-primary-700\n\t\t\t\t\t\t\tdark:file:bg-primary-900/30 dark:file:text-primary-400\n\t\t\t\t\t\t\thover:file:bg-primary-100 dark:hover:file:bg-primary-900/50\n\t\t\t\t\t\t\tfile:cursor-pointer file:transition-colors\n\t\t\t\t\t\t\tborder border-gray-300 dark:border-gray-600 rounded-lg\n\t\t\t\t\t\t\tbg-white dark:bg-gray-700\n\t\t\t\t\t\t\tfocus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent\n\t\t\t\t\t\t\tcursor-pointer\"></div><p class=\"mt-2 text-xs text-gray-500 dark:text-gray-400\">Supported formats: PDF, Images, Documents. Max size: 50MB</p></div><!-- Action Buttons --><div class=\"flex items-center space-x-3 pt-4\"><button type=\"submit\" class=\"flex-1 inline-flex justify-center items-center px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed\"><svg id=\"upload-spinner\" class=\"htmx-indicator animate-spin -ml-1 mr-3 h-5 w-5 text-white\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg> <svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"></path></svg> <span>Upload</span></button> <button type=\"button\" onclick=\"this.closest('div[id=upload-form]').innerHTML = ''\" class=\"px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all\">Cancel</button></div></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -234,20 +254,20 @@ func ShareForm(docID string) templ.Component {
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"share-modal\" class=\"fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-70 overflow-y-auto h-full w-full flex items-center justify-center\" hx-target=\"this\" hx-swap=\"outerHTML\"><div class=\"bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full mx-4\"><h3 class=\"text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100\">Share Document</h3><form hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div id=\"share-modal\" class=\"fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4 animate-fade-in\" hx-target=\"this\" hx-swap=\"outerHTML\" onclick=\"if(event.target === this) this.remove()\"><div class=\"bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full mx-4 border border-gray-200 dark:border-gray-700 animate-slide-in\" onclick=\"event.stopPropagation()\"><!-- Header --><div class=\"flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700\"><div class=\"flex items-center\"><div class=\"w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3\"><svg class=\"w-6 h-6 text-blue-600 dark:text-blue-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z\"></path></svg></div><div><h3 class=\"text-xl font-semibold text-gray-900 dark:text-gray-100\">Share Document</h3><p class=\"text-sm text-gray-600 dark:text-gray-400\">Create a secure sharing link</p></div></div><button hx-get=\"/api/close-modal\" hx-target=\"#share-modal\" hx-swap=\"outerHTML\" class=\"text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors\" title=\"Close\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><!-- Form Content --><form hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/api/documents/%s/share", docID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 128, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/documents.templ`, Line: 307, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-target=\"#share-result\" hx-swap=\"innerHTML\" hx-encoding=\"application/x-www-form-urlencoded\" class=\"space-y-4\"><div><label class=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2\">Expires After (optional, default: 24 hours)</label><div class=\"flex space-x-2\"><div class=\"flex-1\"><input type=\"number\" id=\"expire_days\" name=\"expire_days\" min=\"0\" max=\"365\" placeholder=\"Days\" class=\"block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100\"></div><div class=\"flex-1\"><input type=\"number\" id=\"expire_hours\" name=\"expire_hours\" min=\"0\" max=\"23\" placeholder=\"Hours\" class=\"block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100\"></div></div><p class=\"text-xs text-gray-500 dark:text-gray-400 mt-1\">Example: 2 days and 12 hours, or just 3 hours</p></div><div><label for=\"max_access\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300\">Max Access Count (optional)</label> <input type=\"number\" id=\"max_access\" name=\"max_access\" min=\"1\" class=\"mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100\"></div><div><label for=\"password\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300\">Password (optional)</label> <input type=\"password\" id=\"password\" name=\"password\" class=\"mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100\"></div><div id=\"share-result\"></div><div class=\"flex space-x-2\"><button type=\"submit\" class=\"bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600\">Create Share Link</button> <button type=\"button\" hx-get=\"/api/close-modal\" hx-target=\"#share-modal\" hx-swap=\"outerHTML\" class=\"bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-700 dark:hover:bg-gray-600\">Cancel</button></div></form></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hx-target=\"#share-result\" hx-swap=\"innerHTML\" hx-encoding=\"application/x-www-form-urlencoded\" hx-indicator=\"#share-spinner\" class=\"p-6 space-y-6\"><!-- Expiration Time --><div><label class=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3\"><div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-2 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Link Expiration (optional, default: 24 hours)</div></label><div class=\"grid grid-cols-2 gap-3\"><div><input type=\"number\" id=\"expire_days\" name=\"expire_days\" min=\"0\" max=\"365\" placeholder=\"Days\" class=\"block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all\"><p class=\"mt-1 text-xs text-gray-500 dark:text-gray-400\">Days (0-365)</p></div><div><input type=\"number\" id=\"expire_hours\" name=\"expire_hours\" min=\"0\" max=\"23\" placeholder=\"Hours\" class=\"block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all\"><p class=\"mt-1 text-xs text-gray-500 dark:text-gray-400\">Hours (0-23)</p></div></div><p class=\"mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"currentColor\" viewBox=\"0 0 20 20\"><path fill-rule=\"evenodd\" d=\"M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z\" clip-rule=\"evenodd\"></path></svg> Example: 2 days and 12 hours, or just 3 hours</p></div><!-- Max Access Count --><div><label for=\"max_access\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3\"><div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-2 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Maximum Access Count (optional)</div></label> <input type=\"number\" id=\"max_access\" name=\"max_access\" min=\"1\" placeholder=\"Unlimited if not specified\" class=\"block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all\"><p class=\"mt-2 text-xs text-gray-500 dark:text-gray-400\">Limit how many times the link can be accessed</p></div><!-- Password Protection --><div><label for=\"password\" class=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3\"><div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-2 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z\"></path></svg> Password Protection (optional)</div></label> <input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Add password for extra security\" class=\"block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all\"><p class=\"mt-2 text-xs text-gray-500 dark:text-gray-400\">Recipients will need this password to access the document</p></div><!-- Share Result --><div id=\"share-result\" class=\"empty:hidden\"></div><!-- Action Buttons --><div class=\"flex items-center space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700\"><button type=\"submit\" class=\"flex-1 inline-flex justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed\"><svg id=\"share-spinner\" class=\"htmx-indicator animate-spin -ml-1 mr-3 h-5 w-5 text-white\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg> <svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1\"></path></svg> <span>Create Share Link</span></button> <button type=\"button\" hx-get=\"/api/close-modal\" hx-target=\"#share-modal\" hx-swap=\"outerHTML\" class=\"px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all\">Cancel</button></div></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

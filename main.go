@@ -19,15 +19,17 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 )
 
-func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageService, cache services.CacheService) error {
+func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageService, cachedRepo *services.CachedRepository) error {
 	token := c.Params("token")
 
-	// Query DB (cache disabled for now due to pgtype marshaling issues)
-	share, err := db.GetShareByToken(c.Context(), token)
+	// Use cached repository for share lookup
+	share, err := cachedRepo.GetShareByToken(c.Context(), token)
 	if err != nil {
 		c.Set("Content-Type", "text/html")
 		return c.Status(fiber.StatusNotFound).SendString(`
@@ -41,7 +43,7 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 	}
 
 	// Check expiration
-	if share.ExpiresAt.Time.Before(time.Now()) {
+	if share.ExpiresAt.Before(time.Now()) {
 		c.Set("Content-Type", "text/html")
 		return c.Status(fiber.StatusGone).SendString(`
 			<html><body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
@@ -54,7 +56,7 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 	}
 
 	// Check access count
-	if share.MaxAccess.Int32 != -1 && share.AccessCount.Int32 >= share.MaxAccess.Int32 {
+	if share.MaxAccess != -1 && share.AccessCount >= share.MaxAccess {
 		c.Set("Content-Type", "text/html")
 		return c.Status(fiber.StatusGone).SendString(`
 			<html><body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
@@ -67,19 +69,19 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 	}
 
 	// Check password if set
-	if share.PasswordHash.Valid {
+	if share.PasswordHash != nil {
 		password := c.FormValue("password")
 		if password == "" {
 			password = c.Query("password")
 		}
-		
+
 		if password == "" {
 			// Show password form
 			errorMsg := ""
 			if c.Method() == "POST" {
 				errorMsg = `<p style="color: #c00; margin-bottom: 15px;">❌ Password is required</p>`
 			}
-			
+
 			c.Set("Content-Type", "text/html")
 			return c.SendString(fmt.Sprintf(`
 				<html>
@@ -115,9 +117,9 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 				</html>
 			`, share.Filename, float64(share.FileSize)/1024/1024, errorMsg))
 		}
-		
+
 		// Check password hash
-		if password != share.PasswordHash.String {
+		if password != *share.PasswordHash {
 			errorMsg := `<p style="color: #c00; margin-bottom: 15px;">❌ Invalid password. Please try again.</p>`
 			c.Set("Content-Type", "text/html")
 			return c.SendString(fmt.Sprintf(`
@@ -156,10 +158,17 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 		}
 	}
 
-	// Update access count
-	err = db.UpdateShareAccess(c.Context(), share.ID)
+	// Update access count (and invalidate cache after update)
+	shareID, err := uuid.Parse(share.ID)
 	if err != nil {
-		// log error, but continue
+		// log error but continue
+	} else {
+		err = db.UpdateShareAccess(c.Context(), pgtype.UUID{Bytes: shareID, Valid: true})
+		if err != nil {
+			// log error, but continue
+		}
+		// Invalidate the share cache since access count changed
+		cachedRepo.InvalidateShare(c.Context(), token)
 	}
 
 	// Download document
@@ -236,6 +245,9 @@ func main() {
 	// Initialize cache
 	cache := services.NewRedisCache("localhost:6379", "", 0)
 
+	// Create cached repository
+	cachedRepo := services.NewCachedRepository(queries, cache)
+
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
@@ -297,7 +309,7 @@ func main() {
 
 	// Auth routes (public)
 	authGroup := api.Group("/auth")
-	authHandler = handlers.NewAuthHandler(queries, jwtService)
+	authHandler = handlers.NewAuthHandler(queries, jwtService, cachedRepo)
 	authGroup.Post("/register", authHandler.Register)
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
@@ -311,7 +323,7 @@ func main() {
 
 	// Protected routes
 	protected := api.Group("", auth.AuthMiddleware(jwtService))
-	docHandler := handlers.NewDocumentHandler(queries, storage)
+	docHandler := handlers.NewDocumentHandler(queries, storage, cachedRepo)
 	documents := protected.Group("/documents")
 	documents.Post("", docHandler.Upload)
 	documents.Get("", docHandler.List)
@@ -349,10 +361,10 @@ func main() {
 
 	// Public share access (GET and POST for password submission)
 	app.Get("/api/share/:token", func(c *fiber.Ctx) error {
-		return AccessShare(c, queries, storage, cache)
+		return AccessShare(c, queries, storage, cachedRepo)
 	})
 	app.Post("/api/share/:token", func(c *fiber.Ctx) error {
-		return AccessShare(c, queries, storage, cache)
+		return AccessShare(c, queries, storage, cachedRepo)
 	})
 
 	// Health check

@@ -21,15 +21,17 @@ import (
 )
 
 type DocumentHandler struct {
-	db       *database.Queries
-	storage  services.StorageService
+	db      *database.Queries
+	storage services.StorageService
+	cache   *services.CachedRepository
 	// encryption services.EncryptionService // TODO: add when implemented
 }
 
-func NewDocumentHandler(db *database.Queries, storage services.StorageService) *DocumentHandler {
+func NewDocumentHandler(db *database.Queries, storage services.StorageService, cache *services.CachedRepository) *DocumentHandler {
 	return &DocumentHandler{
 		db:      db,
 		storage: storage,
+		cache:   cache,
 	}
 }
 
@@ -92,6 +94,9 @@ func (h *DocumentHandler) Upload(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save document to database: " + err.Error()})
 	}
 
+	// Invalidate user's document list cache
+	h.cache.InvalidateUserDocuments(c.Context(), userID)
+
 	// Check if request is from HTMX
 	if c.Get("HX-Request") == "true" {
 		// Return user-friendly HTML message and trigger document list refresh
@@ -119,7 +124,8 @@ func (h *DocumentHandler) List(c *fiber.Ctx) error {
 		return err
 	}
 
-	docs, err := h.db.ListDocumentsByUser(c.Context(), pgtype.UUID{Bytes: userID, Valid: true})
+	// Use cached repository for document list
+	docs, err := h.cache.ListDocumentsByUser(c.Context(), userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to list documents"})
 	}
@@ -130,11 +136,11 @@ func (h *DocumentHandler) List(c *fiber.Ctx) error {
 		var templateDocs []templates.Document
 		for _, doc := range docs {
 			templateDocs = append(templateDocs, templates.Document{
-				ID:       doc.ID.String(),
-				Filename: doc.Filename,
-				FileSize: doc.FileSize,
-				MimeType: doc.MimeType,
-				CreatedAt: doc.CreatedAt.Time.Format(time.RFC3339),
+				ID:        doc.ID,
+				Filename:  doc.Filename,
+				FileSize:  doc.FileSize,
+				MimeType:  doc.MimeType,
+				CreatedAt: doc.CreatedAt.Format(time.RFC3339),
 			})
 		}
 		c.Set("Content-Type", "text/html")
@@ -145,11 +151,11 @@ func (h *DocumentHandler) List(c *fiber.Ctx) error {
 	var result []fiber.Map
 	for _, doc := range docs {
 		result = append(result, fiber.Map{
-			"id":         doc.ID.String(),
+			"id":         doc.ID,
 			"filename":   doc.Filename,
 			"file_size":  doc.FileSize,
 			"mime_type":  doc.MimeType,
-			"created_at": doc.CreatedAt.Time.Format(time.RFC3339),
+			"created_at": doc.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -303,6 +309,9 @@ func (h *DocumentHandler) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Document not found or access denied"})
 	}
+
+	// Invalidate document cache
+	h.cache.InvalidateDocument(c.Context(), docID, userID)
 
 	// Check if request expects HTML (HTMX)
 	if c.Get("Accept") == "text/html" || c.Get("HX-Request") == "true" {

@@ -50,3 +50,7 @@ Secure-Document-Exchange-Portal
 #pass
 data.txt
 *.txt
+
+# Cache verification and documentation
+verify-cache.sh
+REDIS_CACHING_COMPLETE.md
