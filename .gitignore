@@ -53,4 +53,8 @@ data.txt
 
 # Cache verification and documentation
 verify-cache.sh
-REDIS_CACHING_COMPLETE.md
+
+# Markdown files (keep only README.md)
+*.md
+!README.md
+!docs/*.md

@@ -12,6 +12,7 @@ import (
 	"Secure-Document-Exchange-Portal/internal/auth"
 	"Secure-Document-Exchange-Portal/internal/database"
 	"Secure-Document-Exchange-Portal/internal/handlers"
+	"Secure-Document-Exchange-Portal/internal/middleware"
 	"Secure-Document-Exchange-Portal/internal/services"
 	"Secure-Document-Exchange-Portal/templates"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageService, cachedRepo *services.CachedRepository) error {
@@ -118,8 +120,8 @@ func AccessShare(c *fiber.Ctx, db *database.Queries, storage services.StorageSer
 			`, share.Filename, float64(share.FileSize)/1024/1024, errorMsg))
 		}
 
-		// Check password hash
-		if password != *share.PasswordHash {
+		// Check password hash using bcrypt
+		if err := bcrypt.CompareHashAndPassword([]byte(*share.PasswordHash), []byte(password)); err != nil {
 			errorMsg := `<p style="color: #c00; margin-bottom: 15px;">❌ Invalid password. Please try again.</p>`
 			c.Set("Content-Type", "text/html")
 			return c.SendString(fmt.Sprintf(`
@@ -213,7 +215,23 @@ func main() {
 
 	// Initialize storage
 	var storage services.StorageService
-	minioStorage, err := services.NewMinIOService("localhost:9000", "minioadmin", "minioadmin", false)
+
+	// Get storage configuration from environment
+	s3Endpoint := os.Getenv("S3_ENDPOINT")
+	if s3Endpoint == "" {
+		s3Endpoint = "localhost:9000" // Default for local development
+	}
+	s3AccessKey := os.Getenv("S3_ACCESS_KEY")
+	if s3AccessKey == "" {
+		s3AccessKey = "minioadmin" // Default for local development
+	}
+	s3SecretKey := os.Getenv("S3_SECRET_KEY")
+	if s3SecretKey == "" {
+		s3SecretKey = "minioadmin" // Default for local development
+	}
+	s3UseSSL := os.Getenv("S3_USE_SSL") == "true"
+
+	minioStorage, err := services.NewMinIOService(s3Endpoint, s3AccessKey, s3SecretKey, s3UseSSL)
 	minioAvailable := false
 	
 	if err == nil {
@@ -242,8 +260,19 @@ func main() {
 		log.Println("✓ Using local file storage at ./storage")
 	}
 
-	// Initialize cache
-	cache := services.NewRedisCache("localhost:6379", "", 0)
+	// Initialize cache with configuration from environment
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379" // Default for local development
+	}
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	// Redis DB defaults to 0 if not specified
+	redisDB := 0
+	if dbStr := os.Getenv("REDIS_DB"); dbStr != "" {
+		fmt.Sscanf(dbStr, "%d", &redisDB)
+	}
+
+	cache := services.NewRedisCache(redisAddr, redisPassword, redisDB)
 
 	// Create cached repository
 	cachedRepo := services.NewCachedRepository(queries, cache)
@@ -261,7 +290,25 @@ func main() {
 	})
 
 	app.Use(logger.New())
-	app.Use(cors.New())
+
+	// Security headers middleware
+	app.Use(middleware.SecurityHeaders())
+
+	// CORS configuration - restrict to specific origins in production
+	allowOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowOrigins == "" {
+		// Default to localhost for development
+		allowOrigins = "http://localhost:8080,http://127.0.0.1:8080"
+	}
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     allowOrigins,
+		AllowMethods:     "GET,POST,PUT,DELETE",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: true,
+	}))
+
+	// Global rate limiting for API endpoints
+	app.Use("/api", middleware.GlobalRateLimiter())
 
 	// Static files
 	app.Use("/static", filesystem.New(filesystem.Config{
@@ -307,8 +354,9 @@ func main() {
 
 	api := app.Group("/api")
 
-	// Auth routes (public)
+	// Auth routes (public) with strict rate limiting
 	authGroup := api.Group("/auth")
+	authGroup.Use(middleware.AuthRateLimiter()) // Apply auth rate limiter
 	authHandler = handlers.NewAuthHandler(queries, jwtService, cachedRepo)
 	authGroup.Post("/register", authHandler.Register)
 	authGroup.Post("/login", authHandler.Login)
@@ -359,11 +407,13 @@ func main() {
 	_ = authGroup
 	_ = protected
 
-	// Public share access (GET and POST for password submission)
-	app.Get("/api/share/:token", func(c *fiber.Ctx) error {
+	// Public share access (GET and POST for password submission) with rate limiting
+	shareGroup := app.Group("/api/share")
+	shareGroup.Use(middleware.SharePasswordRateLimiter()) // Apply share password rate limiter
+	shareGroup.Get("/:token", func(c *fiber.Ctx) error {
 		return AccessShare(c, queries, storage, cachedRepo)
 	})
-	app.Post("/api/share/:token", func(c *fiber.Ctx) error {
+	shareGroup.Post("/:token", func(c *fiber.Ctx) error {
 		return AccessShare(c, queries, storage, cachedRepo)
 	})
 

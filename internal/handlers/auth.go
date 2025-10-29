@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"Secure-Document-Exchange-Portal/internal/database"
 	"Secure-Document-Exchange-Portal/internal/models"
 	"Secure-Document-Exchange-Portal/internal/services"
+	"Secure-Document-Exchange-Portal/internal/validation"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -41,11 +43,28 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		}
 	}
 
-	if req.Email == "" || req.Password == "" || req.FullName == "" {
+	// Validate email
+	if err := validation.ValidateEmail(req.Email); err != nil {
 		if c.Get("HX-Request") == "true" {
-			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>All fields are required</p></div>`)
+			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>` + err.Error() + `</p></div>`)
 		}
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "All fields are required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Validate password
+	if err := validation.ValidatePassword(req.Password); err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>` + err.Error() + `</p></div>`)
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Validate full name
+	if err := validation.ValidateFullName(req.FullName); err != nil {
+		if c.Get("HX-Request") == "true" {
+			return c.Status(fiber.StatusBadRequest).SendString(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded"><p>` + err.Error() + `</p></div>`)
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// Hash password
@@ -133,11 +152,12 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 	if c.Get("HX-Request") == "true" {
 		// Set auth cookie for web requests
+		isProduction := os.Getenv("APP_ENV") == "production"
 		c.Cookie(&fiber.Cookie{
 			Name:     "auth_token",
 			Value:    token,
 			HTTPOnly: true,
-			Secure:   false, // Set to true in production with HTTPS
+			Secure:   isProduction, // Secure only in production with HTTPS
 			SameSite: "Lax",
 			MaxAge:   86400, // 24 hours
 		})

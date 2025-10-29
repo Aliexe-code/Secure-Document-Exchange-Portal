@@ -12,12 +12,14 @@ import (
 	"Secure-Document-Exchange-Portal/internal/auth"
 	"Secure-Document-Exchange-Portal/internal/database"
 	"Secure-Document-Exchange-Portal/internal/services"
+	"Secure-Document-Exchange-Portal/internal/validation"
 	"Secure-Document-Exchange-Portal/templates"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/minio/minio-go/v7"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DocumentHandler struct {
@@ -44,6 +46,18 @@ func (h *DocumentHandler) Upload(c *fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File is required: " + err.Error()})
+	}
+
+	// Validate file size and type
+	if err := validation.ValidateFile(file); err != nil {
+		if c.Get("HX-Request") == "true" {
+			errorMsg := fmt.Sprintf(`<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+				<p class="font-semibold">✗ Upload failed</p>
+				<p class="text-sm mt-1">%s</p>
+			</div>`, err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(errorMsg)
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// Open file
@@ -353,7 +367,7 @@ func (h *DocumentHandler) CreateShare(c *fiber.Ctx) error {
 
 	// Calculate expiration time (default: 24 hours)
 	expiresAt := time.Now().Add(24 * time.Hour)
-	
+
 	var expireDays, expireHours int
 	if expireDaysStr != "" {
 		fmt.Sscanf(expireDaysStr, "%d", &expireDays)
@@ -361,26 +375,39 @@ func (h *DocumentHandler) CreateShare(c *fiber.Ctx) error {
 	if expireHoursStr != "" {
 		fmt.Sscanf(expireHoursStr, "%d", &expireHours)
 	}
-	
-	// If user provided custom values, use them instead of default
+
+	// Validate expiration values
 	if expireDays > 0 || expireHours > 0 {
-		totalHours := (expireDays * 24) + expireHours
-		if totalHours > 0 {
-			expiresAt = time.Now().Add(time.Duration(totalHours) * time.Hour)
+		if err := validation.ValidateShareExpiration(expireDays, expireHours); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
+		totalHours := (expireDays * 24) + expireHours
+		expiresAt = time.Now().Add(time.Duration(totalHours) * time.Hour)
 	}
 
-	// Parse max access count
+	// Parse and validate max access count
 	maxAccess := -1
 	if maxAccessStr != "" {
 		fmt.Sscanf(maxAccessStr, "%d", &maxAccess)
+		if err := validation.ValidateShareMaxAccess(maxAccess); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
 	}
 
-	// Handle password
+	// Validate share password if provided
+	if err := validation.ValidateSharePassword(password); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Handle password - hash it using bcrypt
 	var passwordHash *string
 	if password != "" {
-		// TODO: hash password
-		passwordHash = &password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process password"})
+		}
+		hashStr := string(hashedPassword)
+		passwordHash = &hashStr
 	}
 
 	// Generate token

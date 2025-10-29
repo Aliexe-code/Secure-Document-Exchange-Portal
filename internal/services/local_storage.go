@@ -15,8 +15,8 @@ type LocalStorageService struct {
 }
 
 func NewLocalStorageService(basePath string) (*LocalStorageService, error) {
-	// Create base directory if it doesn't exist
-	if err := os.MkdirAll(basePath, 0755); err != nil {
+	// Create base directory with secure permissions (owner-only access)
+	if err := os.MkdirAll(basePath, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create storage directory: %w", err)
 	}
 
@@ -24,23 +24,23 @@ func NewLocalStorageService(basePath string) (*LocalStorageService, error) {
 }
 
 func (s *LocalStorageService) Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, objectSize int64, opts minio.PutObjectOptions) (minio.UploadInfo, error) {
-	// Create bucket directory if it doesn't exist
+	// Create bucket directory with secure permissions (owner-only access)
 	bucketPath := filepath.Join(s.basePath, bucketName)
-	if err := os.MkdirAll(bucketPath, 0755); err != nil {
+	if err := os.MkdirAll(bucketPath, 0700); err != nil {
 		return minio.UploadInfo{}, fmt.Errorf("failed to create bucket directory: %w", err)
 	}
 
 	// Create full path for the object
 	objectPath := filepath.Join(bucketPath, objectName)
-	
-	// Create directory for the object if needed
+
+	// Create directory for the object with secure permissions
 	objectDir := filepath.Dir(objectPath)
-	if err := os.MkdirAll(objectDir, 0755); err != nil {
+	if err := os.MkdirAll(objectDir, 0700); err != nil {
 		return minio.UploadInfo{}, fmt.Errorf("failed to create object directory: %w", err)
 	}
 
-	// Create file
-	file, err := os.Create(objectPath)
+	// Create file with secure permissions (owner read/write only)
+	file, err := os.OpenFile(objectPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return minio.UploadInfo{}, fmt.Errorf("failed to create file: %w", err)
 	}
