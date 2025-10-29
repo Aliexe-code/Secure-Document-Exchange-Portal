@@ -1,0 +1,46 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+docs/
+
+# Environment & secrets
+.env
+.env.*
+*.key
+*.pem
+
+# IDE & editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Build artifacts
+sdep
+*.exe
+bin/
+dist/
+
+# Logs & temp files
+*.log
+logs/
+tmp/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Storage & data
+storage/
+data/
+*.db
+*.sqlite
+
+# Test files (optional - uncomment if you don't need them in image)
+# *_test.go
+# test/

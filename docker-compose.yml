@@ -1,0 +1,102 @@
+services:
+  # ============================================================================
+  # APPLICATION SERVICE
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sdep:latest
+    container_name: sdep-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Use your existing .env file values directly
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      S3_ENDPOINT: minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-documents}
+      S3_USE_SSL: "false"
+      APP_ENV: ${APP_ENV:-development}
+      PORT: "8080"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+    depends_on:
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks:
+      - sdep-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # REDIS CACHE
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: sdep-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sdep-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # MINIO OBJECT STORAGE (S3-Compatible)
+  # ============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: sdep-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Web Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - sdep-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  sdep-network:
+    driver: bridge
+
+# ============================================================================
+# VOLUMES (Persistent Data)
+# ============================================================================
+volumes:
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
